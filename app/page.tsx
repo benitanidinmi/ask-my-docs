@@ -81,7 +81,7 @@ export default function Home() {
       <div className="mx-auto max-w-3xl px-4 py-10">
         <h1 className="text-3xl font-semibold tracking-tight">Ask My Docs</h1>
         <p className="mt-2 text-zinc-300">
-          Dosya seç → yükle → soru sor. (Şimdilik cevaplar “sahte”, yarın gerçek dokümandan parça bulmaya geçeceğiz.)
+          Dosya seç → yükle → soru sor. Şimdilik sadece .txt destekleniyor ve sistem dokümandan en alakalı parçaları buluyor.
         </p>
 
         <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
@@ -90,7 +90,7 @@ export default function Home() {
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               type="file"
-              accept=".txt,.pdf,.doc,.docx"
+              accept=".txt"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="block w-full cursor-pointer rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-sm file:text-zinc-100 hover:file:bg-zinc-700"
             />
