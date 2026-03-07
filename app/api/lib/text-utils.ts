@@ -1,23 +1,18 @@
 export function normalizeText(text: string) {
   return text
-    .toLowerCase()
+    .toLocaleLowerCase("tr-TR")
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-export function splitIntoChunks(text: string, chunkSize = 500) {
-  const cleanText = text.trim();
+export function splitIntoChunks(text: string) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
 
-  if (!cleanText) return [];
-
-  const chunks: string[] = [];
-
-  for (let i = 0; i < cleanText.length; i += chunkSize) {
-    chunks.push(cleanText.slice(i, i + chunkSize));
-  }
-
-  return chunks;
+  return lines;
 }
 
 export function scoreChunk(question: string, chunk: string) {

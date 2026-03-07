@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const filePath = path.join(process.cwd(), "storage", filename);
     const fileContent = await fs.readFile(filePath, "utf-8");
 
-    const chunks = splitIntoChunks(fileContent, 500);
+    const chunks = splitIntoChunks(fileContent);
     const bestChunks = findBestChunks(question, chunks, 3);
 
     if (bestChunks.length === 0) {
