@@ -3,13 +3,27 @@
 import { useMemo, useState } from "react";
 
 type UploadResult = { ok: boolean; filename?: string; message?: string };
-type AskResult = { ok: boolean; answer?: string; usedFilename?: string; message?: string };
+
+type MatchItem = {
+  index: number;
+  chunk: string;
+  score: number;
+};
+
+type AskResult = {
+  ok: boolean;
+  answer?: string;
+  usedFilename?: string;
+  message?: string;
+  matches?: MatchItem[];
+};
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [question, setQuestion] = useState("");
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [answer, setAnswer] = useState<string>("");
+  const [matches, setMatches] = useState<MatchItem[]>([]);
   const [loadingUpload, setLoadingUpload] = useState(false);
   const [loadingAsk, setLoadingAsk] = useState(false);
 
@@ -24,6 +38,7 @@ export default function Home() {
     setLoadingUpload(true);
     setUploadStatus("");
     setAnswer("");
+    setMatches([]);
 
     try {
       const formData = new FormData();
@@ -50,7 +65,7 @@ export default function Home() {
 
     setLoadingAsk(true);
     setAnswer("");
-
+    setMatches([]);
     try {
       const res = await fetch("/api/ask", {
         method: "POST",
@@ -69,6 +84,7 @@ export default function Home() {
       }
 
       setAnswer(data.answer || "");
+      setMatches(data.matches || []);
     } catch (e) {
       setAnswer("Bir hata oldu (ask).");
     } finally {
@@ -140,6 +156,28 @@ export default function Home() {
               <div className="mt-2 rounded-lg border border-zinc-800 bg-zinc-950 p-4">
                 <p className="text-sm font-medium text-zinc-200">Cevap</p>
                 <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">{answer}</p>
+
+                {matches.length > 0 && (
+                  <div className="mt-5">
+                    <p className="text-sm font-medium text-zinc-200">Kaynaklar</p>
+
+                    <div className="mt-3 flex flex-col gap-3">
+                      {matches.map((match, idx) => (
+                        <div
+                          key={`${match.index}-${idx}`}
+                          className="rounded-lg border border-zinc-800 bg-zinc-900 p-3"
+                        >
+                          <p className="text-xs text-zinc-400">
+                            Parça #{match.index + 1} · Puan: {match.score}
+                          </p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">
+                            {match.chunk}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

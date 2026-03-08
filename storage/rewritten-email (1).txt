@@ -1,0 +1,51 @@
+Şunu dedin:
+Ben 35 yaşında bir okul öncesi öğretmeniyim. 12 senedir HTML, CSS ve Javascript ile geliştirmeler yaptım. Bundan para kazandım. Amerikalı müşterilerim için proje bazlı çalıştım. AEM, Leadpages gibi cms sistemlerinde çalıştım ya da tamamen kendi kodlarımla projeler ürettim. Wordpress projelerimde oldu. Okul müdürü olduğum için gün için bu işlere ayıracak bolca vaktim oluyor. Akşamları da çalışabilirim. Bu günden itibaren de Yapay Zeka (AI) işlerinde çalışmak için yetkinliklerimi geliştirmek istiyorum. Bana bir yol haritası çizer misin? Piyasanın ihtiyaç duyduğu ai developer neler bilmeli. Hangi yetkinliklerim olursa daha kolay iş bulabilirim. Piyasa hangi yapay zeka yetkinliklerinden iş bekliyor. Tüm bunları göz önünde bulundurarar. ne öğrenmeliyim, hangi sırada öğrenmeliyim gibi bir yol haritası hazırlar mısın?
+
+
+ChatGPT:
+Şimdi sana sıradan “AI öğren” tavsiyesi değil, senin geçmişine göre optimize edilmiş gerçekçi bir AI developer roadmap vereceğim. Çünkü sen aslında sıfırdan başlamıyorsun — büyük avantajların var:
+👉 12 yıl frontend/dev deneyimi
+👉 ABD müşterileri ile proje bazlı çalışma (freelance mindset var)
+👉 CMS + custom development tecrübesi
+👉 HTML/CSS/JS → AI uygulama geliştirme için PERFECT base
+👉 Gün içinde çalışma zamanı var (çok kritik avantaj)
+Açık söyleyeyim:
+🔥 Senin profilin “AI Researcher” değil
+🔥 En hızlı para getirecek yol: AI Application Developer / LLM Engineer / AI Automation Developer
+Şimdi gerçek roadmap’e geçelim.
+________________________________________
+🚨 Önce büyük resmi anlayalım (piyasa ne istiyor)
+Şu an AI iş piyasasında en çok talep edilenler:
+✅ Machine Learning Engineer
+✅ Generative AI Engineer
+✅ LLM Application Developer
+✅ AI Automation Specialist
+✅ AI Integration Engineer
+AI iş ilanları ciddi artışta ve şirketler artık diploma değil pratik portfolyo arıyor. 
+Özellikle:
+👉 Prompt engineering
+👉 NLP / LLM kullanımı
+👉 Python + cloud
+👉 AI workflow automation
+çok talep görüyor. 
+________________________________________
+⚠️ Büyük yanlış: AI öğrenmek ≠ matematik profesörü olmak
+2022 roadmapleri:
+❌ linear algebra
+❌ deep math
+❌ neural network from scratch
+Bugün:
+👉 API + LLM integration bilen developer = para kazanır
+AI artık:
+👉 MODEL YAZMAK değil
+👉 MODEL KULLANARAK PRODUCT yapmak
+________________________________________
+🔥 Senin için EN DOĞRU AI kariyer yolu
+Şu yolu öneriyorum:
+👉 AI Web Developer → LLM Engineer → AI Automation Consultant
+Çünkü:
+•	zaten web developer’sın
+•	API mantığı biliyorsun
+•	frontend var
+•	client work deneyimi var
+Bu yüzden ML engineer değil, AI PRODUCT ENGINEER olmalısın.

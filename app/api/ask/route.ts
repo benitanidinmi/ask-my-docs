@@ -1,11 +1,16 @@
 import fs from "fs/promises";
 import path from "path";
+import OpenAI from "openai";
 import { findBestChunks, splitIntoChunks } from "../lib/text-utils";
 
 type AskBody = {
   question?: string;
   filename?: string;
 };
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function POST(req: Request) {
   try {
@@ -28,6 +33,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!process.env.OPENAI_API_KEY) {
+      return Response.json(
+        { ok: false, message: "OPENAI_API_KEY eksik." },
+        { status: 500 }
+      );
+    }
+
     const filePath = path.join(process.cwd(), "storage", filename);
     const fileContent = await fs.readFile(filePath, "utf-8");
 
@@ -37,25 +49,62 @@ export async function POST(req: Request) {
     if (bestChunks.length === 0) {
       return Response.json({
         ok: true,
-        answer:
-          "Soruyla eşleşen güçlü bir bölüm bulamadım. Daha farklı bir soru yazmayı deneyebilirsin.",
+        answer: "Bu bilgi dokümanda bulunamadı.",
         matches: [],
       });
     }
 
-    const answerLines = bestChunks.map(
-      (item, i) =>
-        `${i + 1}. Parça (puan: ${item.score})\n${item.chunk}`
-    );
+    const contextText = bestChunks
+      .map((item, index) => {
+        return `Kaynak ${index + 1}:\n${item.chunk}`;
+      })
+      .join("\n\n");
+
+    const prompt = `
+        Sen bir doküman destekli yardımcı asistansın.
+
+        Kurallar:
+        - Sadece sana verilen kaynak metinlere göre cevap ver.
+        - Kaynaklarda olmayan bir bilgiyi uydurma.
+        - Eğer cevap açıkça kaynaklarda yoksa sadece şu cümleyi yaz:
+        "Bu bilgi dokümanda bulunamadı."
+        - Cevabın kısa, net ve sade Türkçe olsun.
+
+        Kullanıcının sorusu:
+        ${question}
+
+        Kaynak metinler:
+        ${contextText}
+        `;
+
+    const completion = await client.chat.completions.create({
+      model: "gpt-4.1-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "Sen sadece verilen kaynaklara göre cevap veren dikkatli bir asistansın.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.2,
+    });
+
+    const answer =
+      completion.choices[0]?.message?.content?.trim() ||
+      "Bu bilgi dokümanda bulunamadı.";
 
     return Response.json({
       ok: true,
-      answer:
-        "Soruna en yakın görünen doküman parçalarını aşağıda buldum:\n\n" +
-        answerLines.join("\n\n--------------------\n\n"),
+      answer,
       matches: bestChunks,
     });
   } catch (error) {
+    console.error(error);
+
     return Response.json(
       { ok: false, message: "Soru işlenirken hata oluştu." },
       { status: 500 }
