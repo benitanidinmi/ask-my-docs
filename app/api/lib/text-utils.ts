@@ -6,13 +6,34 @@ export function normalizeText(text: string) {
     .trim();
 }
 
-export function splitIntoChunks(text: string) {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+export function splitIntoChunks(text: string, minLength = 120) {
+  const rawParagraphs = text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
 
-  return lines;
+  const chunks: string[] = [];
+  let buffer = "";
+
+  for (const paragraph of rawParagraphs) {
+    if (buffer.length === 0) {
+      buffer = paragraph;
+      continue;
+    }
+
+    if (buffer.length < minLength) {
+      buffer += "\n\n" + paragraph;
+    } else {
+      chunks.push(buffer);
+      buffer = paragraph;
+    }
+  }
+
+  if (buffer.length > 0) {
+    chunks.push(buffer);
+  }
+
+  return chunks;
 }
 
 export function scoreChunk(question: string, chunk: string) {
