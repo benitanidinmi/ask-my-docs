@@ -1,7 +1,8 @@
 import fs from "fs/promises";
 import path from "path";
 import OpenAI from "openai";
-import { findBestChunks, splitIntoChunks } from "../lib/text-utils";
+import { splitIntoChunks } from "../lib/text-utils";
+import { findBestChunksByEmbedding } from "../lib/semantic-search";
 
 type AskBody = {
   question?: string;
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
     const fileContent = await fs.readFile(filePath, "utf-8");
 
     const chunks = splitIntoChunks(fileContent);
-    const bestChunks = findBestChunks(question, chunks, 3);
+    const bestChunks = await findBestChunksByEmbedding(question, chunks, 3);
 
     if (bestChunks.length === 0) {
       return Response.json({

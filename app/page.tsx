@@ -168,7 +168,7 @@ export default function Home() {
                           className="rounded-lg border border-zinc-800 bg-zinc-900 p-3"
                         >
                           <p className="text-xs text-zinc-400">
-                            Parça #{match.index + 1} · Puan: {match.score}
+                            Parça #{match.index + 1} · Benzerlik: {match.score.toFixed(3)}
                           </p>
                           <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">
                             {match.chunk}
