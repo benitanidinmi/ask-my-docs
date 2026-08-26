@@ -67,3 +67,14 @@ export function findBestChunks(question: string, chunks: string[], topK = 3) {
     .sort((a, b) => b.score - a.score)
     .slice(0, topK);
 }
+
+export function normalizeDocumentText(text: string) {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\t\f\v\u00a0]+/g, " ")
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}

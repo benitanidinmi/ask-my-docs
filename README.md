@@ -1,6 +1,6 @@
 # Ask My Docs (WIP)
 
-A simple Next.js app where you can upload a document and ask questions about it.
+A simple Next.js app where you can upload a TXT or text-based PDF document and ask questions about it.
 
 ## Current Status (Day 1)
 - Basic UI: file picker + question input
@@ -9,13 +9,13 @@ A simple Next.js app where you can upload a document and ask questions about it.
   - `POST /api/ask` (returns a placeholder answer)
 
 ## Current Status (Day 2)
-- Uploads and stores `.txt` files
+- Processes `.txt` and text-based `.pdf` files in memory
 - Splits document text into chunks
 - Finds the most relevant text chunks for a given question
 - Returns matching sections from the document
 
 ## Current Status (Day 3)
-- Uploads and stores `.txt` files
+- Processes uploaded document text without persistent filesystem storage
 - Splits document text into chunks
 - Finds the most relevant sections for a question
 - Uses AI to generate an answer grounded in the retrieved text
@@ -29,6 +29,12 @@ A simple Next.js app where you can upload a document and ask questions about it.
 ## Tech Stack
 - Next.js (App Router) + TypeScript
 - Tailwind CSS
+- `unpdf` for in-memory text extraction from text-based PDFs
+
+## Upload limits
+- TXT: 100 KB and valid UTF-8
+- PDF: 4 MB, up to 100 pages, with at most 100,000 extracted characters
+- Scanned/image-only PDFs require OCR and are not supported yet
 
 ## Getting Started
 ```bash
