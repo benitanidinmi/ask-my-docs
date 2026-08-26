@@ -70,14 +70,14 @@ export function resolveRedisEnvironment(
 ): RedisEnvironment | null {
   const candidates: RedisEnvironment[] = [
     {
-      url: nonEmpty(environment.UPSTASH_REDIS_REST_URL) ?? "",
-      token: nonEmpty(environment.UPSTASH_REDIS_REST_TOKEN) ?? "",
-      source: "upstash",
-    },
-    {
       url: nonEmpty(environment.KV_REST_API_URL) ?? "",
       token: nonEmpty(environment.KV_REST_API_TOKEN) ?? "",
       source: "vercel-kv",
+    },
+    {
+      url: nonEmpty(environment.UPSTASH_REDIS_REST_URL) ?? "",
+      token: nonEmpty(environment.UPSTASH_REDIS_REST_TOKEN) ?? "",
+      source: "upstash",
     },
   ];
 
@@ -109,27 +109,28 @@ function getRedisClient() {
 }
 
 function safeRedisError(error: unknown) {
-  const details: { name: string; message?: string } = {
+  const message = error instanceof Error ? error.message : "";
+  const details: {
+    stage: "command" | "response";
+    name: string;
+    category: string;
+  } = {
+    stage:
+      error instanceof TypeError &&
+      message === "Redis rate limit command returned an invalid response."
+        ? "response"
+        : "command",
     name: error instanceof Error ? error.name : "UnknownError",
+    category: "command_rejected",
   };
 
-  if (!(error instanceof Error) || !error.message) return details;
+  if (details.stage === "response") details.category = "invalid_response";
+  else if (/NOPERM/i.test(message)) details.category = "permission_denied";
+  else if (/NOAUTH|WRONGPASS/i.test(message)) {
+    details.category = "authentication_failed";
+  } else if (/timeout|timed out|abort/i.test(message)) details.category = "timeout";
+  else if (/fetch|network|ECONN/i.test(message)) details.category = "network";
 
-  const secretValues = [
-    process.env.UPSTASH_REDIS_REST_URL,
-    process.env.UPSTASH_REDIS_REST_TOKEN,
-    process.env.KV_REST_API_URL,
-    process.env.KV_REST_API_TOKEN,
-    process.env.RATE_LIMIT_HASH_SALT,
-  ].filter((value): value is string => Boolean(value));
-
-  const containsSecret = secretValues.some((value) => error.message.includes(value));
-  const containsConnectionData =
-    /(?:https?|rediss?):\/\/|authorization|bearer\s|(?:\d{1,3}\.){3}\d{1,3}/i.test(
-      error.message
-    );
-
-  if (!containsSecret && !containsConnectionData) details.message = error.message;
   return details;
 }
 

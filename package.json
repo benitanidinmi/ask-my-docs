@@ -9,7 +9,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:rate-limit": "node --no-warnings --experimental-strip-types --test tests/rate-limit.test.mjs"
   },
   "dependencies": {
     "@upstash/redis": "^1.38.3",

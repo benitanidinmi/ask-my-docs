@@ -42,7 +42,7 @@ A simple Next.js app where you can upload a TXT, text-based PDF, or supported im
 - AI operations use Upstash Redis for serverless-safe persistent quotas.
 - Defaults: 3 AI operations/minute per visitor, 10/day per visitor, 200/day globally.
 - TXT/PDF parsing does not consume AI quota; image vision and `/api/ask` do.
-- Required server variables: `RATE_LIMIT_HASH_SALT` plus writable Redis REST credentials. The app prefers `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` and falls back to Vercel's `KV_REST_API_URL` / `KV_REST_API_TOKEN`. It never uses the read-only token.
+- Required server variables: `RATE_LIMIT_HASH_SALT` plus writable Redis REST credentials. On Vercel, the app prefers the integration-provided `KV_REST_API_URL` / `KV_REST_API_TOKEN` and otherwise uses `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`. It never uses the read-only token.
 - Optional limit overrides: `AI_BURST_LIMIT`, `AI_DAILY_LIMIT_PER_VISITOR`, and `AI_GLOBAL_DAILY_LIMIT`.
 - AI operations fail closed with HTTP 503 when the limiter is missing or unavailable.
 
