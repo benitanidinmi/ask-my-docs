@@ -40,22 +40,97 @@ export class RateLimitUnavailableError extends Error {
 
 type RedisEvalClient = Pick<Redis, "eval">;
 
+type RedisEnvironment = {
+  url: string;
+  token: string;
+  source: "upstash" | "vercel-kv";
+};
+
 function readPositiveLimit(name: string, fallback: number) {
   const parsed = Number.parseInt(process.env[name] ?? "", 10);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function getRedisClient() {
-  const url =
-    process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
-  const token =
-    process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
+function nonEmpty(value: string | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
 
-  if (!url || !token || !process.env.RATE_LIMIT_HASH_SALT) {
+function isRestUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+export function resolveRedisEnvironment(
+  environment: NodeJS.ProcessEnv = process.env
+): RedisEnvironment | null {
+  const candidates: RedisEnvironment[] = [
+    {
+      url: nonEmpty(environment.UPSTASH_REDIS_REST_URL) ?? "",
+      token: nonEmpty(environment.UPSTASH_REDIS_REST_TOKEN) ?? "",
+      source: "upstash",
+    },
+    {
+      url: nonEmpty(environment.KV_REST_API_URL) ?? "",
+      token: nonEmpty(environment.KV_REST_API_TOKEN) ?? "",
+      source: "vercel-kv",
+    },
+  ];
+
+  return candidates.find(({ url, token }) => Boolean(token) && isRestUrl(url)) ?? null;
+}
+
+export function createRateLimitRedisClient(
+  environment: NodeJS.ProcessEnv = process.env
+) {
+  const configuration = resolveRedisEnvironment(environment);
+  const salt = nonEmpty(environment.RATE_LIMIT_HASH_SALT);
+
+  if (!configuration || !salt) {
+    console.error(
+      "Rate limit unavailable: Redis environment configuration is missing."
+    );
     throw new RateLimitUnavailableError();
   }
 
-  return new Redis({ url, token, retry: false });
+  return new Redis({
+    url: configuration.url,
+    token: configuration.token,
+    retry: false,
+  });
+}
+
+function getRedisClient() {
+  return createRateLimitRedisClient();
+}
+
+function safeRedisError(error: unknown) {
+  const details: { name: string; message?: string } = {
+    name: error instanceof Error ? error.name : "UnknownError",
+  };
+
+  if (!(error instanceof Error) || !error.message) return details;
+
+  const secretValues = [
+    process.env.UPSTASH_REDIS_REST_URL,
+    process.env.UPSTASH_REDIS_REST_TOKEN,
+    process.env.KV_REST_API_URL,
+    process.env.KV_REST_API_TOKEN,
+    process.env.RATE_LIMIT_HASH_SALT,
+  ].filter((value): value is string => Boolean(value));
+
+  const containsSecret = secretValues.some((value) => error.message.includes(value));
+  const containsConnectionData =
+    /(?:https?|rediss?):\/\/|authorization|bearer\s|(?:\d{1,3}\.){3}\d{1,3}/i.test(
+      error.message
+    );
+
+  if (!containsSecret && !containsConnectionData) details.message = error.message;
+  return details;
 }
 
 function normalizeClientIp(request: Request) {
@@ -72,8 +147,13 @@ function normalizeClientIp(request: Request) {
 }
 
 function getVisitorHash(request: Request) {
-  const salt = process.env.RATE_LIMIT_HASH_SALT;
-  if (!salt) throw new RateLimitUnavailableError();
+  const salt = nonEmpty(process.env.RATE_LIMIT_HASH_SALT);
+  if (!salt) {
+    console.error(
+      "Rate limit unavailable: Redis environment configuration is missing."
+    );
+    throw new RateLimitUnavailableError();
+  }
 
   return createHmac("sha256", salt)
     .update(normalizeClientIp(request))
@@ -113,14 +193,16 @@ export async function checkAiRateLimit(
     );
 
     if (!Array.isArray(result) || result.length < 3) {
-      throw new RateLimitUnavailableError();
+      throw new TypeError("Redis rate limit command returned an invalid response.");
     }
 
     if (Number(result[0]) === 1) return { allowed: true };
 
     const scopes: RateLimitScope[] = ["burst", "visitor", "global"];
     const scope = scopes[Number(result[1]) - 1];
-    if (!scope) throw new RateLimitUnavailableError();
+    if (!scope || !Number.isFinite(Number(result[2]))) {
+      throw new TypeError("Redis rate limit command returned an invalid response.");
+    }
 
     return {
       allowed: false,
@@ -130,9 +212,10 @@ export async function checkAiRateLimit(
   } catch (error) {
     if (error instanceof RateLimitUnavailableError) throw error;
 
-    console.error("AI rate limit backend failed:", {
-      name: error instanceof Error ? error.name : "UnknownError",
-    });
+    console.error(
+      "Rate limit unavailable: Redis command failed.",
+      safeRedisError(error)
+    );
     throw new RateLimitUnavailableError();
   }
 }
