@@ -1,14 +1,18 @@
 import OpenAI from "openai";
-import { splitIntoChunks } from "../lib/text-utils";
+import { splitDocumentIntoChunks } from "../lib/text-utils";
 import { findBestChunksByEmbedding } from "../lib/semantic-search";
+import type { DocumentKind, SourceEvidence } from "../lib/types";
 
 type AskBody = {
   question?: string;
   documentText?: string;
+  documentKind?: DocumentKind;
 };
 
 const MAX_DOCUMENT_LENGTH = 100_000;
 const MAX_QUESTION_LENGTH = 2_000;
+const NOT_FOUND_ANSWER = "Bu bilgi dokümanda bulunamadı.";
+const MAX_EXCERPT_LENGTH = 700;
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -56,14 +60,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const chunks = splitIntoChunks(documentText);
+    const documentKind = body.documentKind;
+    const chunks = splitDocumentIntoChunks(documentText, documentKind);
     const bestChunks = await findBestChunksByEmbedding(question, chunks, 3);
 
     if (bestChunks.length === 0) {
       return Response.json({
         ok: true,
-        answer: "Bu bilgi dokümanda bulunamadı.",
-        matches: [],
+        answer: NOT_FOUND_ANSWER,
+        sources: [],
       });
     }
 
@@ -77,10 +82,11 @@ export async function POST(req: Request) {
         Sen bir doküman destekli yardımcı asistansın.
 
         Kurallar:
-        - Sadece sana verilen kaynak metinlere göre cevap ver.
-        - Kaynaklarda olmayan bir bilgiyi uydurma.
-        - Eğer cevap açıkça kaynaklarda yoksa sadece şu cümleyi yaz:
-        "Bu bilgi dokümanda bulunamadı."
+        - Yalnızca aşağıdaki kaynak metinlerde açıkça bulunan bilgilere göre cevap ver.
+        - Kaynaklarda bulunmayan bilgileri tahmin etme, tamamlama veya uydurma.
+        - Dokümanın kaynak olarak verilmeyen diğer bölümlerini gördüğünü iddia etme.
+        - Kaynaklar soruyu yanıtlamak için yeterli değilse yalnızca şu cümleyi yaz:
+        "${NOT_FOUND_ANSWER}"
         - Cevabın kısa, net ve sade Türkçe olsun.
 
         Kullanıcının sorusu:
@@ -108,12 +114,45 @@ export async function POST(req: Request) {
 
     const answer =
       completion.choices[0]?.message?.content?.trim() ||
-      "Bu soruya uygun bilgi, yüklenen dokümanda bulunamadı.";
+      NOT_FOUND_ANSWER;
+
+    const createExcerpt = (chunk: string) => {
+      if (chunk.length <= MAX_EXCERPT_LENGTH) return chunk;
+
+      const questionWords = question
+        .toLocaleLowerCase("tr-TR")
+        .split(/\s+/)
+        .filter((word) => word.length > 2);
+      const normalizedChunk = chunk.toLocaleLowerCase("tr-TR");
+      const matchIndex = questionWords
+        .map((word) => normalizedChunk.indexOf(word))
+        .find((index) => index >= 0) ?? 0;
+      const start = Math.max(0, matchIndex - 250);
+      const end = Math.min(chunk.length, start + MAX_EXCERPT_LENGTH);
+      return `${start > 0 ? "…" : ""}${chunk.slice(start, end).trim()}${end < chunk.length ? "…" : ""}`;
+    };
+
+    const sources: SourceEvidence[] =
+      answer === NOT_FOUND_ANSWER
+        ? []
+        : bestChunks.map((item, index) => ({
+            id: `source-${index + 1}`,
+            excerpt: createExcerpt(item.chunk),
+            page: item.page,
+            label:
+              documentKind === "image"
+                ? "Image analysis"
+                : item.page
+                  ? `PDF — Page ${item.page}`
+                  : documentKind === "pdf"
+                    ? "Relevant PDF passage"
+                    : "Relevant passage",
+          }));
 
     return Response.json({
       ok: true,
       answer,
-      matches: bestChunks,
+      sources,
     });
   } catch (error) {
     console.error(error);

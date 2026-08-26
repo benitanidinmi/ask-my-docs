@@ -6,6 +6,7 @@ import {
 } from "../lib/image-utils";
 import { extractPdfText, PdfValidationError } from "../lib/pdf-utils";
 import { splitIntoChunks } from "../lib/text-utils";
+import type { DocumentKind } from "../lib/types";
 
 const MAX_TXT_SIZE = 100_000;
 // Keeps multipart uploads below typical serverless request limits and bounds PDF parsing work.
@@ -82,8 +83,10 @@ export async function POST(req: Request) {
 
     const bytes = await file.arrayBuffer();
     let fileContent: string;
+    let documentKind: DocumentKind;
 
     if (isImage && expectedImageMime) {
+      documentKind = "image";
       const apiKey = process.env.OPENAI_API_KEY;
 
       if (!apiKey) {
@@ -110,6 +113,7 @@ export async function POST(req: Request) {
         throw error;
       }
     } else if (extension === ".pdf") {
+      documentKind = "pdf";
       try {
         fileContent = await extractPdfText(bytes);
       } catch (error) {
@@ -120,6 +124,7 @@ export async function POST(req: Request) {
         throw error;
       }
     } else {
+      documentKind = "txt";
       try {
         fileContent = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
       } catch (error) {
@@ -156,6 +161,7 @@ export async function POST(req: Request) {
       ok: true,
       filename: file.name,
       documentText: fileContent,
+      documentKind,
       message: "Dosya hazırlandı.",
     });
   } catch (error) {

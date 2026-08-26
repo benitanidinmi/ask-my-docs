@@ -1,36 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-
-type UploadResult = {
-  ok: boolean;
-  code?: string;
-  filename?: string;
-  documentText?: string;
-  message?: string;
-};
-
-type MatchItem = {
-  index: number;
-  chunk: string;
-  score: number;
-};
-
-type AskResult = {
-  ok: boolean;
-  answer?: string;
-  usedFilename?: string;
-  message?: string;
-  matches?: MatchItem[];
-};
+import type {
+  AskResult,
+  DocumentKind,
+  SourceEvidence,
+  UploadResult,
+} from "./api/lib/types";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [question, setQuestion] = useState("");
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [documentText, setDocumentText] = useState("");
+  const [documentKind, setDocumentKind] = useState<DocumentKind>();
   const [answer, setAnswer] = useState<string>("");
-  const [matches, setMatches] = useState<MatchItem[]>([]);
+  const [sources, setSources] = useState<SourceEvidence[]>([]);
   const [loadingUpload, setLoadingUpload] = useState(false);
   const [loadingAsk, setLoadingAsk] = useState(false);
 
@@ -48,7 +33,7 @@ export default function Home() {
     setLoadingUpload(true);
     setUploadStatus("");
     setAnswer("");
-    setMatches([]);
+    setSources([]);
 
     try {
       const formData = new FormData();
@@ -68,6 +53,7 @@ export default function Home() {
       }
 
       setDocumentText(data.documentText);
+      setDocumentKind(data.documentKind);
       setUploadStatus(`Yüklendi: ${data.filename}`);
     } catch {
       setUploadStatus("Bir hata oldu (upload).");
@@ -81,7 +67,7 @@ export default function Home() {
 
     setLoadingAsk(true);
     setAnswer("");
-    setMatches([]);
+    setSources([]);
     try {
       const res = await fetch("/api/ask", {
         method: "POST",
@@ -89,6 +75,7 @@ export default function Home() {
         body: JSON.stringify({
           question,
           documentText,
+          documentKind,
         }),
       });
 
@@ -100,7 +87,7 @@ export default function Home() {
       }
 
       setAnswer(data.answer || "");
-      setMatches(data.matches || []);
+      setSources(data.sources || []);
     } catch {
       setAnswer("Bir hata oldu (ask).");
     } finally {
@@ -126,6 +113,7 @@ export default function Home() {
               onChange={(e) => {
                 setFile(e.target.files?.[0] || null);
                 setDocumentText("");
+                setDocumentKind(undefined);
                 setUploadStatus("");
               }}
               className="block w-full cursor-pointer rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-sm file:text-zinc-100 hover:file:bg-zinc-700"
@@ -177,26 +165,26 @@ export default function Home() {
                 <p className="text-sm font-medium text-zinc-200">Cevap (Bu cevap dokümana göre oluşturuldu)</p>
                 <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">{answer}</p>
 
-                {matches.length > 0 && (
-                  <div className="mt-5">
-                    <p className="text-sm font-medium text-zinc-200">Kaynaklar</p>
+                {sources.length > 0 && (
+                  <details className="mt-5 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
+                    <summary className="cursor-pointer text-sm font-medium text-zinc-300">
+                      Dokümandan kanıtlar ({sources.length})
+                    </summary>
 
                     <div className="mt-3 flex flex-col gap-3">
-                      {matches.map((match, idx) => (
+                      {sources.map((source) => (
                         <div
-                          key={`${match.index}-${idx}`}
-                          className="rounded-lg border border-zinc-800 bg-zinc-900 p-3"
+                          key={source.id}
+                          className="rounded-lg border border-zinc-800 bg-zinc-950 p-3"
                         >
-                          <p className="text-xs text-zinc-400">
-                            Parça #{match.index + 1} · Benzerlik: {match.score.toFixed(3)}
-                          </p>
+                          <p className="text-xs font-medium text-zinc-400">{source.label}</p>
                           <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">
-                            {match.chunk}
+                            “{source.excerpt}”
                           </p>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </details>
                 )}
               </div>
             )}

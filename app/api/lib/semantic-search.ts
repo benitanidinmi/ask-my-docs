@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { DocumentChunk, normalizeText } from "./text-utils";
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -8,7 +9,10 @@ export type ScoredChunk = {
   index: number;
   chunk: string;
   score: number;
+  page?: number;
 };
+
+const MIN_RELATIVE_SCORE = 0.75;
 
 export async function getEmbedding(text: string) {
   const response = await client.embeddings.create({
@@ -44,25 +48,45 @@ export function cosineSimilarity(a: number[], b: number[]) {
 
 export async function findBestChunksByEmbedding(
   question: string,
-  chunks: string[],
+  chunks: DocumentChunk[],
   topK = 3
 ): Promise<ScoredChunk[]> {
   const questionEmbedding = await getEmbedding(question);
 
   const scoredChunks = await Promise.all(
     chunks.map(async (chunk, index) => {
-      const chunkEmbedding = await getEmbedding(chunk);
+      const chunkEmbedding = await getEmbedding(chunk.text);
       const score = cosineSimilarity(questionEmbedding, chunkEmbedding);
 
       return {
         index,
-        chunk,
+        chunk: chunk.text,
         score,
+        page: chunk.page,
       };
     })
   );
 
-  return scoredChunks
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topK);
+  const sortedChunks = scoredChunks.sort((a, b) => b.score - a.score);
+  const bestScore = sortedChunks[0]?.score ?? 0;
+  const selected: ScoredChunk[] = [];
+
+  for (const candidate of sortedChunks) {
+    if (bestScore > 0 && candidate.score < bestScore * MIN_RELATIVE_SCORE) {
+      continue;
+    }
+
+    const candidateWords = new Set(normalizeText(candidate.chunk).split(" "));
+    const isNearDuplicate = selected.some((item) => {
+      const selectedWords = new Set(normalizeText(item.chunk).split(" "));
+      const overlap = [...candidateWords].filter((word) => selectedWords.has(word));
+      const unionSize = new Set([...candidateWords, ...selectedWords]).size;
+      return unionSize > 0 && overlap.length / unionSize >= 0.85;
+    });
+
+    if (!isNearDuplicate) selected.push(candidate);
+    if (selected.length === topK) break;
+  }
+
+  return selected;
 }

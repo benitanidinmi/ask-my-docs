@@ -1,5 +1,5 @@
 import { extractText, getDocumentProxy } from "unpdf";
-import { normalizeDocumentText } from "./text-utils";
+import { serializePdfPages } from "./text-utils";
 
 const MAX_PDF_PAGES = 100;
 
@@ -35,8 +35,8 @@ export async function extractPdfText(data: ArrayBuffer) {
       );
     }
 
-    const { text } = await extractText(pdf, { mergePages: true });
-    return normalizeDocumentText(text);
+    const { text } = await extractText(pdf);
+    return serializePdfPages(text);
   } catch (error) {
     if (error instanceof PdfValidationError) {
       throw error;
