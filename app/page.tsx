@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from "react";
 
-type UploadResult = { ok: boolean; filename?: string; message?: string };
+type UploadResult = {
+  ok: boolean;
+  filename?: string;
+  documentText?: string;
+  message?: string;
+};
 
 type MatchItem = {
   index: number;
@@ -22,12 +27,16 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [question, setQuestion] = useState("");
   const [uploadStatus, setUploadStatus] = useState<string>("");
+  const [documentText, setDocumentText] = useState("");
   const [answer, setAnswer] = useState<string>("");
   const [matches, setMatches] = useState<MatchItem[]>([]);
   const [loadingUpload, setLoadingUpload] = useState(false);
   const [loadingAsk, setLoadingAsk] = useState(false);
 
-  const canAsk = useMemo(() => !!file && question.trim().length > 0, [file, question]);
+  const canAsk = useMemo(
+    () => documentText.length > 0 && question.trim().length > 0,
+    [documentText, question]
+  );
 
   async function handleUpload() {
     if (!file) {
@@ -52,8 +61,14 @@ export default function Home() {
         return;
       }
 
+      if (!data.documentText) {
+        setUploadStatus("Yüklenen dosya okunamadı.");
+        return;
+      }
+
+      setDocumentText(data.documentText);
       setUploadStatus(`Yüklendi: ${data.filename}`);
-    } catch (e) {
+    } catch {
       setUploadStatus("Bir hata oldu (upload).");
     } finally {
       setLoadingUpload(false);
@@ -72,7 +87,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question,
-          filename: file?.name,
+          documentText,
         }),
       });
 
@@ -85,7 +100,7 @@ export default function Home() {
 
       setAnswer(data.answer || "");
       setMatches(data.matches || []);
-    } catch (e) {
+    } catch {
       setAnswer("Bir hata oldu (ask).");
     } finally {
       setLoadingAsk(false);
@@ -107,7 +122,11 @@ export default function Home() {
             <input
               type="file"
               accept=".txt"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              onChange={(e) => {
+                setFile(e.target.files?.[0] || null);
+                setDocumentText("");
+                setUploadStatus("");
+              }}
               className="block w-full cursor-pointer rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-sm file:text-zinc-100 hover:file:bg-zinc-700"
             />
 
@@ -154,7 +173,7 @@ export default function Home() {
 
             {answer && (
               <div className="mt-2 rounded-lg border border-zinc-800 bg-zinc-950 p-4">
-                <p className="text-sm font-medium text-zinc-200">Cevap</p>
+                <p className="text-sm font-medium text-zinc-200">Cevap (Bu cevap dokümana göre oluşturuldu)</p>
                 <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">{answer}</p>
 
                 {matches.length > 0 && (

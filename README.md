@@ -21,6 +21,11 @@ A simple Next.js app where you can upload a document and ask questions about it.
 - Uses AI to generate an answer grounded in the retrieved text
 - Shows source snippets under each answer
 
+## Current Status (Day 4)
+- Uses OpenAI embeddings for semantic search
+- Retrieves the most relevant document chunks by meaning, not just keyword match
+- Generates grounded answers from retrieved sources
+
 ## Tech Stack
 - Next.js (App Router) + TypeScript
 - Tailwind CSS

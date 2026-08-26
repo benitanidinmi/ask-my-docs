@@ -1,13 +1,14 @@
-import fs from "fs/promises";
-import path from "path";
 import OpenAI from "openai";
 import { splitIntoChunks } from "../lib/text-utils";
 import { findBestChunksByEmbedding } from "../lib/semantic-search";
 
 type AskBody = {
   question?: string;
-  filename?: string;
+  documentText?: string;
 };
+
+const MAX_DOCUMENT_LENGTH = 100_000;
+const MAX_QUESTION_LENGTH = 2_000;
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
     const body = (await req.json()) as AskBody;
 
     const question = body.question?.trim();
-    const filename = body.filename?.trim();
+    const documentText = body.documentText?.trim();
 
     if (!question) {
       return Response.json(
@@ -27,9 +28,23 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!filename) {
+    if (question.length > MAX_QUESTION_LENGTH) {
+      return Response.json(
+        { ok: false, message: "Soru en fazla 2.000 karakter olabilir." },
+        { status: 400 }
+      );
+    }
+
+    if (!documentText) {
       return Response.json(
         { ok: false, message: "Önce bir dosya yüklemelisin." },
+        { status: 400 }
+      );
+    }
+
+    if (documentText.length > MAX_DOCUMENT_LENGTH) {
+      return Response.json(
+        { ok: false, message: "Doküman en fazla 100 KB olabilir." },
         { status: 400 }
       );
     }
@@ -41,10 +56,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const filePath = path.join(process.cwd(), "storage", filename);
-    const fileContent = await fs.readFile(filePath, "utf-8");
-
-    const chunks = splitIntoChunks(fileContent);
+    const chunks = splitIntoChunks(documentText);
     const bestChunks = await findBestChunksByEmbedding(question, chunks, 3);
 
     if (bestChunks.length === 0) {
@@ -96,7 +108,7 @@ export async function POST(req: Request) {
 
     const answer =
       completion.choices[0]?.message?.content?.trim() ||
-      "Bu bilgi dokümanda bulunamadı.";
+      "Bu soruya uygun bilgi, yüklenen dokümanda bulunamadı.";
 
     return Response.json({
       ok: true,
