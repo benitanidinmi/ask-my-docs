@@ -38,6 +38,14 @@ A simple Next.js app where you can upload a TXT, text-based PDF, or supported im
 - Images: 4 MB, up to 10,000 pixels per side and 20 megapixels total
 - Scanned/image-only PDFs require OCR and are not supported yet
 
+## AI rate limiting
+- AI operations use Upstash Redis for serverless-safe persistent quotas.
+- Defaults: 3 AI operations/minute per visitor, 10/day per visitor, 200/day globally.
+- TXT/PDF parsing does not consume AI quota; image vision and `/api/ask` do.
+- Required server variables: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, and `RATE_LIMIT_HASH_SALT`.
+- Optional limit overrides: `AI_BURST_LIMIT`, `AI_DAILY_LIMIT_PER_VISITOR`, and `AI_GLOBAL_DAILY_LIMIT`.
+- AI operations fail closed with HTTP 503 when the limiter is missing or unavailable.
+
 ## Getting Started
 ```bash
 npm install

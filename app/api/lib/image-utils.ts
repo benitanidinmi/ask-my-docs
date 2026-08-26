@@ -142,7 +142,7 @@ function getWebpDimensions(bytes: Uint8Array) {
   return null;
 }
 
-function validateImage(bytes: Uint8Array, mimeType: string) {
+export function validateImage(bytes: Uint8Array, mimeType: string) {
   const dimensions =
     mimeType === "image/png"
       ? getPngDimensions(bytes)
@@ -178,7 +178,7 @@ export async function extractImageText(
   validateImage(bytes, mimeType);
 
   const dataUrl = `data:${mimeType};base64,${Buffer.from(bytes).toString("base64")}`;
-  const client = new OpenAI({ apiKey });
+  const client = new OpenAI({ apiKey, maxRetries: 0 });
 
   try {
     const response = await client.responses.create({

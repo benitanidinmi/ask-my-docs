@@ -2,6 +2,12 @@ import OpenAI from "openai";
 import { splitDocumentIntoChunks } from "../lib/text-utils";
 import { findBestChunksByEmbedding } from "../lib/semantic-search";
 import type { DocumentKind, SourceEvidence } from "../lib/types";
+import {
+  checkAiRateLimit,
+  RateLimitUnavailableError,
+  rateLimitResponse,
+  rateLimitUnavailableResponse,
+} from "../lib/rate-limit";
 
 type AskBody = {
   question?: string;
@@ -16,6 +22,7 @@ const MAX_EXCERPT_LENGTH = 700;
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  maxRetries: 0,
 });
 
 export async function POST(req: Request) {
@@ -58,6 +65,17 @@ export async function POST(req: Request) {
         { ok: false, message: "OPENAI_API_KEY eksik." },
         { status: 500 }
       );
+    }
+
+    try {
+      const rateLimit = await checkAiRateLimit(req);
+      if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
+    } catch (error) {
+      if (error instanceof RateLimitUnavailableError) {
+        return rateLimitUnavailableResponse();
+      }
+
+      throw error;
     }
 
     const documentKind = body.documentKind;
@@ -110,6 +128,7 @@ export async function POST(req: Request) {
         },
       ],
       temperature: 0.2,
+      max_completion_tokens: 500,
     });
 
     const answer =

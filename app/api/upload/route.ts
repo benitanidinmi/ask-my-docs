@@ -2,11 +2,18 @@ export const runtime = "nodejs";
 import {
   extractImageText,
   ImageValidationError,
+  validateImage,
   VisionServiceError,
 } from "../lib/image-utils";
 import { extractPdfText, PdfValidationError } from "../lib/pdf-utils";
 import { splitIntoChunks } from "../lib/text-utils";
 import type { DocumentKind } from "../lib/types";
+import {
+  checkAiRateLimit,
+  RateLimitUnavailableError,
+  rateLimitResponse,
+  rateLimitUnavailableResponse,
+} from "../lib/rate-limit";
 
 const MAX_TXT_SIZE = 100_000;
 // Keeps multipart uploads below typical serverless request limits and bounds PDF parsing work.
@@ -97,8 +104,17 @@ export async function POST(req: Request) {
       }
 
       try {
+        validateImage(new Uint8Array(bytes), expectedImageMime);
+
+        const rateLimit = await checkAiRateLimit(req);
+        if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
+
         fileContent = await extractImageText(bytes, expectedImageMime, apiKey);
       } catch (error) {
+        if (error instanceof RateLimitUnavailableError) {
+          return rateLimitUnavailableResponse();
+        }
+
         if (error instanceof ImageValidationError) {
           return validationError(error.code, error.message);
         }

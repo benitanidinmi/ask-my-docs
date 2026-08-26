@@ -15,6 +15,7 @@ export type SourceEvidence = {
 export type UploadResult = {
   ok: boolean;
   code?: string;
+  retryAfter?: number;
   filename?: string;
   documentText?: string;
   documentKind?: DocumentKind;
@@ -23,6 +24,8 @@ export type UploadResult = {
 
 export type AskResult = {
   ok: boolean;
+  code?: string;
+  retryAfter?: number;
   answer?: string;
   sources?: SourceEvidence[];
   message?: string;

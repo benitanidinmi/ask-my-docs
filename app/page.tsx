@@ -102,6 +102,9 @@ export default function Home() {
         <p className="mt-2 text-zinc-300">
           Dosya seç → yükle → soru sor. TXT, metin tabanlı PDF ve PNG/JPG/WEBP görseller destekleniyor; sistem dokümandan en alakalı parçaları buluyor.
         </p>
+        <p className="mt-2 text-xs text-zinc-500">
+          Demo kullanımı günlük olarak sınırlandırılmıştır.
+        </p>
 
         <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
           <h2 className="text-lg font-medium">1) Doküman ekle</h2>

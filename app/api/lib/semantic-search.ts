@@ -3,6 +3,7 @@ import { DocumentChunk, normalizeText } from "./text-utils";
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  maxRetries: 0,
 });
 
 export type ScoredChunk = {
@@ -22,6 +23,16 @@ export async function getEmbedding(text: string) {
   });
 
   return response.data[0].embedding;
+}
+
+async function getEmbeddings(texts: string[]) {
+  const response = await client.embeddings.create({
+    model: "text-embedding-3-small",
+    input: texts,
+    encoding_format: "float",
+  });
+
+  return response.data.map((item) => item.embedding);
 }
 
 export function cosineSimilarity(a: number[], b: number[]) {
@@ -51,21 +62,22 @@ export async function findBestChunksByEmbedding(
   chunks: DocumentChunk[],
   topK = 3
 ): Promise<ScoredChunk[]> {
-  const questionEmbedding = await getEmbedding(question);
+  const [questionEmbedding, ...chunkEmbeddings] = await getEmbeddings([
+    question,
+    ...chunks.map((chunk) => chunk.text),
+  ]);
 
-  const scoredChunks = await Promise.all(
-    chunks.map(async (chunk, index) => {
-      const chunkEmbedding = await getEmbedding(chunk.text);
-      const score = cosineSimilarity(questionEmbedding, chunkEmbedding);
+  const scoredChunks = chunks.map((chunk, index) => {
+    const chunkEmbedding = chunkEmbeddings[index];
+    const score = cosineSimilarity(questionEmbedding, chunkEmbedding);
 
-      return {
-        index,
-        chunk: chunk.text,
-        score,
-        page: chunk.page,
-      };
-    })
-  );
+    return {
+      index,
+      chunk: chunk.text,
+      score,
+      page: chunk.page,
+    };
+  });
 
   const sortedChunks = scoredChunks.sort((a, b) => b.score - a.score);
   const bestScore = sortedChunks[0]?.score ?? 0;
