@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file");
 
-    if (!file || !(file instanceof File)) {
+    if (!file || typeof file === "string") {
       return Response.json(
         { ok: false, message: "Dosya bulunamadı." },
         { status: 400 }
@@ -29,7 +29,22 @@ export async function POST(req: Request) {
       );
     }
 
-    const fileContent = await file.text();
+    let fileContent: string;
+
+    try {
+      fileContent = new TextDecoder("utf-8", { fatal: true }).decode(
+        await file.arrayBuffer()
+      );
+    } catch (error) {
+      if (error instanceof TypeError) {
+        return Response.json(
+          { ok: false, message: "Dosya geçerli UTF-8 metin içermelidir." },
+          { status: 400 }
+        );
+      }
+
+      throw error;
+    }
     const chunks = splitIntoChunks(fileContent);
 
     if (chunks.length === 0) {
@@ -45,9 +60,15 @@ export async function POST(req: Request) {
       documentText: fileContent,
       message: "Dosya hazırlandı.",
     });
-  } catch {
+  } catch (error) {
+    console.error("Unexpected TXT upload failure:", error);
+
     return Response.json(
-      { ok: false, message: "Upload sırasında hata oluştu." },
+      {
+        ok: false,
+        code: "UPLOAD_FAILED",
+        message: "Upload sırasında beklenmeyen bir hata oluştu.",
+      },
       { status: 500 }
     );
   }
