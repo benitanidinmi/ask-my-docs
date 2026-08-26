@@ -1,14 +1,31 @@
 export const runtime = "nodejs";
+import {
+  extractImageText,
+  ImageValidationError,
+  VisionServiceError,
+} from "../lib/image-utils";
 import { extractPdfText, PdfValidationError } from "../lib/pdf-utils";
 import { splitIntoChunks } from "../lib/text-utils";
 
 const MAX_TXT_SIZE = 100_000;
 // Keeps multipart uploads below typical serverless request limits and bounds PDF parsing work.
 const MAX_PDF_SIZE = 4_000_000;
+const MAX_IMAGE_SIZE = 4_000_000;
 const MAX_DOCUMENT_LENGTH = 100_000;
+
+const imageMimeTypes = new Map([
+  [".png", "image/png"],
+  [".jpg", "image/jpeg"],
+  [".jpeg", "image/jpeg"],
+  [".webp", "image/webp"],
+]);
 
 function validationError(code: string, message: string) {
   return Response.json({ ok: false, code, message }, { status: 400 });
+}
+
+function serverError(code: string, message: string) {
+  return Response.json({ ok: false, code, message }, { status: 500 });
 }
 
 export async function POST(req: Request) {
@@ -22,15 +39,19 @@ export async function POST(req: Request) {
 
     const extension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
 
-    if (extension !== ".txt" && extension !== ".pdf") {
+    const isImage = extension ? imageMimeTypes.has(extension) : false;
+
+    if (extension !== ".txt" && extension !== ".pdf" && !isImage) {
       return validationError(
         "UNSUPPORTED_FILE_TYPE",
-        "Sadece TXT ve PDF dosyaları destekleniyor."
+        "Sadece TXT, PDF, PNG, JPG/JPEG ve WEBP dosyaları destekleniyor."
       );
     }
 
-    const allowedMimeTypes =
-      extension === ".pdf"
+    const expectedImageMime = extension ? imageMimeTypes.get(extension) : undefined;
+    const allowedMimeTypes = expectedImageMime
+      ? new Set([expectedImageMime])
+      : extension === ".pdf"
         ? new Set(["", "application/pdf", "application/octet-stream"])
         : new Set(["", "text/plain", "application/octet-stream"]);
 
@@ -41,14 +62,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const sizeLimit = extension === ".pdf" ? MAX_PDF_SIZE : MAX_TXT_SIZE;
+    const sizeLimit = isImage
+      ? MAX_IMAGE_SIZE
+      : extension === ".pdf"
+        ? MAX_PDF_SIZE
+        : MAX_TXT_SIZE;
 
     if (file.size === 0) {
       return validationError("EMPTY_FILE", "Dosya boş olamaz.");
     }
 
     if (file.size > sizeLimit) {
-      const limitMessage = extension === ".pdf" ? "4 MB" : "100 KB";
+      const limitMessage = extension === ".txt" ? "100 KB" : "4 MB";
       return validationError(
         "FILE_TOO_LARGE",
         `Dosya en fazla ${limitMessage} olabilir.`
@@ -58,7 +83,33 @@ export async function POST(req: Request) {
     const bytes = await file.arrayBuffer();
     let fileContent: string;
 
-    if (extension === ".pdf") {
+    if (isImage && expectedImageMime) {
+      const apiKey = process.env.OPENAI_API_KEY;
+
+      if (!apiKey) {
+        return serverError(
+          "VISION_NOT_CONFIGURED",
+          "Görsel işleme servisi yapılandırılmamış."
+        );
+      }
+
+      try {
+        fileContent = await extractImageText(bytes, expectedImageMime, apiKey);
+      } catch (error) {
+        if (error instanceof ImageValidationError) {
+          return validationError(error.code, error.message);
+        }
+
+        if (error instanceof VisionServiceError) {
+          return serverError(
+            "VISION_PROCESSING_FAILED",
+            "Görsel şu anda işlenemedi. Lütfen tekrar deneyin."
+          );
+        }
+
+        throw error;
+      }
+    } else if (extension === ".pdf") {
       try {
         fileContent = await extractPdfText(bytes);
       } catch (error) {

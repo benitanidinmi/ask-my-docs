@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 type UploadResult = {
   ok: boolean;
+  code?: string;
   filename?: string;
   documentText?: string;
   message?: string;
@@ -112,7 +113,7 @@ export default function Home() {
       <div className="mx-auto max-w-3xl px-4 py-10">
         <h1 className="text-3xl font-semibold tracking-tight">Ask My Docs</h1>
         <p className="mt-2 text-zinc-300">
-          Dosya seç → yükle → soru sor. TXT ve metin tabanlı PDF dosyaları destekleniyor; sistem dokümandan en alakalı parçaları buluyor.
+          Dosya seç → yükle → soru sor. TXT, metin tabanlı PDF ve PNG/JPG/WEBP görseller destekleniyor; sistem dokümandan en alakalı parçaları buluyor.
         </p>
 
         <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
@@ -121,7 +122,7 @@ export default function Home() {
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               type="file"
-              accept=".txt,.pdf,text/plain,application/pdf"
+              accept=".txt,.pdf,.png,.jpg,.jpeg,.webp,text/plain,application/pdf,image/png,image/jpeg,image/webp"
               onChange={(e) => {
                 setFile(e.target.files?.[0] || null);
                 setDocumentText("");
