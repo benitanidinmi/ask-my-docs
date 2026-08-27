@@ -9,6 +9,8 @@ const accept = ".txt,.pdf,.png,.jpg,.jpeg,.webp,text/plain,application/pdf,image
 function Spinner() { return <span className="spinner" aria-hidden="true" />; }
 function FileIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.75h6.5L18 8.3v11.95H7V3.75Z M13.5 3.75V8.3H18" fill="none" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.6" /></svg>; }
 function UploadIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m0 0L8 8m4-4 4 4M5.5 14.5v4.25h13V14.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" /></svg>; }
+function SunIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" strokeWidth="1.7" /><path d="M12 2.5v2M12 19.5v2M4.5 12h-2M21.5 12h-2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" /></svg>; }
+function MoonIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.2 15.2A7.8 7.8 0 0 1 8.8 4.8a7.8 7.8 0 1 0 10.4 10.4Z" fill="none" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.7" /></svg>; }
 
 function friendlyError(status: number, data: UploadResult | AskResult, fallback: string) {
   if (status === 429) return `Demo usage limit reached.${data.retryAfter ? ` Try again in ${Math.ceil(data.retryAfter / 60)} minute${data.retryAfter > 60 ? "s" : ""}.` : " Please try again shortly."}`;
@@ -87,12 +89,18 @@ export default function Home() {
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && canAsk) { event.preventDefault(); void handleAsk(); }
   }
   const uploadLabel = file?.type.startsWith("image/") ? "Analyzing image..." : "Preparing document...";
+  function toggleTheme() {
+    const root = document.documentElement;
+    const nextTheme = root.dataset.theme === "dark" ? "light" : "dark";
+    root.dataset.theme = nextTheme;
+    localStorage.setItem("ask-my-docs-theme", nextTheme);
+  }
 
   return <div className="app-shell">
     <header className="app-header">
       <div className="shell header-content">
         <a href="#workspace" className="brand" aria-label="Ask My Docs home"><span className="brand-mark">A</span><span><strong>Ask My Docs</strong><small>AI Document Assistant</small></span></a>
-        <p>Grounded answers with clear evidence.</p>
+        <div className="header-actions"><p>Grounded answers with clear evidence.</p><button type="button" className="theme-toggle" onClick={toggleTheme} aria-label="Toggle light and dark theme" title="Toggle light and dark theme"><span className="sun-icon"><SunIcon /></span><span className="moon-icon"><MoonIcon /></span></button></div>
       </div>
     </header>
 
