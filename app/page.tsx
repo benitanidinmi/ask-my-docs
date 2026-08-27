@@ -31,14 +31,15 @@ export default function Home() {
   const [askError, setAskError] = useState("");
   const [documentText, setDocumentText] = useState("");
   const [documentKind, setDocumentKind] = useState<DocumentKind>();
+  const [documentReady, setDocumentReady] = useState(false);
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState<SourceEvidence[]>([]);
   const [loadingUpload, setLoadingUpload] = useState(false), [loadingAsk, setLoadingAsk] = useState(false), [dragging, setDragging] = useState(false);
-  const canAsk = useMemo(() => documentText.length > 0 && question.trim().length > 0, [documentText, question]);
+  const canAsk = useMemo(() => documentReady && question.trim().length > 0 && !loadingAsk, [documentReady, question, loadingAsk]);
   const busy = loadingUpload || loadingAsk;
 
   function selectFile(next: File | null) {
-    setFile(next); setDocumentText(""); setDocumentKind(undefined); setAnswer(""); setSources([]); setAskError("");
+    setFile(next); setDocumentText(""); setDocumentKind(undefined); setDocumentReady(false); setAnswer(""); setSources([]); setAskError("");
     setNotice(next ? { tone: "info", message: `${next.name} is ready to upload.` } : null);
   }
   function fileChange(e: ChangeEvent<HTMLInputElement>) { selectFile(e.target.files?.[0] ?? null); }
@@ -56,7 +57,7 @@ export default function Home() {
       const res = await fetch("/api/upload", { method: "POST", body }); const data = await res.json() as UploadResult;
       if (!res.ok || !data.ok) { setNotice({ tone: "error", message: friendlyError(res.status, data, "The document could not be prepared.") }); return; }
       if (!data.documentText) { setNotice({ tone: "error", message: "No readable content was found in this file." }); return; }
-      setDocumentText(data.documentText); setDocumentKind(data.documentKind); setNotice({ tone: "success", message: `${data.filename ?? file.name} is ready for questions.` });
+      setDocumentText(data.documentText); setDocumentKind(data.documentKind); setDocumentReady(true); setNotice({ tone: "success", message: `${data.filename ?? file.name} ready` });
     } catch { setNotice({ tone: "error", message: "The upload could not be completed. Check your connection and try again." }); }
     finally { setLoadingUpload(false); }
   }
@@ -79,7 +80,7 @@ export default function Home() {
   return <div className="app-shell">
     <header className="site-header"><div className="page-width header-inner"><a href="#main-content" className="brand" aria-label="Ask My Docs home"><span className="brand-mark" aria-hidden="true">A</span><span>Ask My Docs</span></a><span className="demo-badge">AI Document Assistant</span></div></header>
     <main id="main-content" className="page-width main-content">
-      <div className="intro"><p className="eyebrow">Grounded answers, clear evidence</p><h1>Ask questions about documents, PDFs and screenshots.</h1><p>Upload a file, ask a question, and get a concise answer supported by passages from your document.</p></div>
+      <div className="intro"><p className="eyebrow">AI Document Assistant</p><h1>Ask My Docs</h1><p>Ask questions about documents, PDFs and screenshots.</p></div>
       <div className="workflow">
         <section className="panel" aria-labelledby="upload-heading">
           <Heading number="1" id="upload-heading" title="Upload a document" copy="Choose the source you want to ask about." />
@@ -88,14 +89,14 @@ export default function Home() {
             <span className="upload-icon"><UploadIcon /></span><div className="dropzone-copy"><p>{file ? file.name : "Drop a file here, or choose from your device"}</p><span>TXT · PDF · PNG · JPG · WEBP</span></div>
             <label htmlFor={fileId} className={`secondary-button${busy ? " is-disabled" : ""}`}>{file ? "Change file" : "Choose file"}</label>
           </div>
-          <div className="action-row"><p>TXT up to 100 KB · PDF and images up to 4 MB</p><button type="button" onClick={handleUpload} disabled={busy || !file} className="primary-button">{loadingUpload && <Spinner />}{loadingUpload ? uploadLabel : documentText ? "Upload again" : "Upload"}</button></div>
+          <div className="action-row"><p>TXT up to 100 KB · PDF and images up to 4 MB</p><button type="button" onClick={handleUpload} disabled={busy || !file} className="primary-button">{loadingUpload && <Spinner />}{loadingUpload ? uploadLabel : documentReady ? "Upload again" : "Upload"}</button></div>
           <div aria-live="polite" aria-atomic="true">{loadingUpload && <Notice tone="info" message={uploadLabel} loading />}{!loadingUpload && notice && <Notice {...notice} />}</div>
         </section>
         <section className="panel" aria-labelledby="question-heading">
           <Heading number="2" id="question-heading" title="Ask a question" copy="Answers are limited to information found in your file." />
           <label htmlFor={questionId} className="field-label">Your question</label>
           <textarea id={questionId} value={question} maxLength={2000} onChange={e => setQuestion(e.target.value)} onKeyDown={questionKey} placeholder="Ask something about the uploaded document..." disabled={busy} className="question-input" />
-          <div className="action-row question-row"><p><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>Enter</kbd> to ask</p><button type="button" onClick={handleAsk} disabled={busy || !canAsk} className="ask-button">{loadingAsk && <Spinner />}{loadingAsk ? "Searching document..." : "Ask"}</button></div>
+          <div className="action-row question-row"><p><kbd>Ctrl</kbd> / <kbd>⌘</kbd> + <kbd>Enter</kbd> to ask</p><button type="button" onClick={handleAsk} disabled={!canAsk || loadingUpload} className="ask-button">{loadingAsk && <Spinner />}{loadingAsk ? "Searching..." : "Ask"}</button></div>
           <div aria-live="assertive">{askError && <Notice tone="error" message={askError} />}</div>
         </section>
         <section className="answer-section" aria-labelledby="answer-heading">
